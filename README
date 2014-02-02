@@ -1,0 +1,15 @@
+PageRank Calculation using Hadoop's MapReduce framework on wikipedia data
+
+This project contains four tasks:
+
+Task 1:
+
+Parse a XML file by MapReduce. Fetch the <title> and <text> tags. The <text> tag contains wikilinks. 
+The wikilinks are matched with a regular expression and they are removed. Form an adjacency graph with
+the page titles and wiki-links.
+
+Task 2:
+
+Counting the number of page titles.
+
+Task 3 and Task 4: Yet to be done.
