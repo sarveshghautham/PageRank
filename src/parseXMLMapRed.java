@@ -7,8 +7,6 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.io.IntWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -25,6 +23,7 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
+import java.util.HashSet;
 
 class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 	
@@ -68,8 +67,9 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 	   			}
 	   			/* Replacing spaces with '_' */
 	   			link = link.replace(' ', '_');
+	   			
 	   			/* Excluding interwiki links, section linking and table row linking */
-	   			if ( link.indexOf(':') < 0  && link.indexOf('#') < 0) {
+	   			if ( link.indexOf(':') < 0  && link.indexOf('#') < 0 && !link.equals(pageTitle)) {
 	   				context.write(new Text(pageTitle), new Text(link));
 	   			}
 	   			link = "";
@@ -85,15 +85,21 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 
 }
 
-/* TODO: Reducer class coming */
 class parserXmlRed extends Reducer<Text, Text, Text, Text> {
 
     public void reduce(Text key, Iterable<Text> values, Context context) 
         throws IOException, InterruptedException {
+    	HashSet<String> hs = new HashSet<String>();
         String output="";
         for (Text val : values) {
-            output += val.toString()+"    ";
+        	hs.add(val.toString());
         }
+         
+        for(String temp: hs){
+        	output += temp + "    ";
+        }
+        
+        output = hs.toString();
         output += '\n';
         context.write(key, new Text(output));
     }
