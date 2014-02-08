@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
+import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
@@ -23,7 +25,6 @@ import org.jdom.Document;
 import org.jdom.Element;
 import org.jdom.JDOMException;
 import org.jdom.input.SAXBuilder;
-import java.util.HashSet;
 
 class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 	
@@ -45,21 +46,10 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
            pageTitle = pageTitle.replace(' ', '_');
            
            /* Pattern to extract text inside "[[ ]]" */
-   			//Pattern pattern = Pattern.compile("\\[\\[.*?\\]\\]");
-            Pattern pattern = Pattern.compile("\\[\\[.*?\\]\\]");
+   			Pattern pattern = Pattern.compile("\\[\\[.*?\\]\\]");
    			Matcher matcher = pattern.matcher(pageText);
-   			String[] tempArray;
    			while (matcher.find()) {
-//   				link = matcher.group(0).replace('[', ' ').replace(']', ' ').trim();
-   				link = matcher.group(0).substring(2, matcher.group(0).length() - 2);
-   				
-   				if(link.contains("[[")){
-   					tempArray = link.split("\\[\\[");
-   					link = tempArray[tempArray.length - 1]; 
-   				}else if(link.contains("]]")){
-   					tempArray = link.split("\\]\\]");
-   					link = tempArray[0]; 
-   				}
+   				link = matcher.group(0).replace('[', '\0').replace(']', '\0');
 	   			/* Fetching the first page when a '|' occurs */
 	   			int pipePos = link.indexOf('|');
 	   			if(pipePos >= 0){
@@ -67,9 +57,8 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 	   			}
 	   			/* Replacing spaces with '_' */
 	   			link = link.replace(' ', '_');
-	   			
 	   			/* Excluding interwiki links, section linking and table row linking */
-	   			if ( link.indexOf(':') < 0  && link.indexOf('#') < 0 && !link.equals(pageTitle)) {
+	   			if ( link.indexOf(':') <= 0  || link.charAt(0) != '#') {
 	   				context.write(new Text(pageTitle), new Text(link));
 	   			}
 	   			link = "";
@@ -85,21 +74,15 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 
 }
 
+/* TODO: Reducer class coming */
 class parserXmlRed extends Reducer<Text, Text, Text, Text> {
 
     public void reduce(Text key, Iterable<Text> values, Context context) 
         throws IOException, InterruptedException {
-    	HashSet<String> hs = new HashSet<String>();
         String output="";
         for (Text val : values) {
-        	hs.add(val.toString());
+            output += val.toString()+"    ";
         }
-         
-        for(String temp: hs){
-        	output += temp + "    ";
-        }
-        
-        output = hs.toString();
         output += '\n';
         context.write(key, new Text(output));
     }

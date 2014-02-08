@@ -12,6 +12,8 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 public class PageCountMR {
+	
+	public static long pageCount;
 
     public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
         
@@ -19,7 +21,11 @@ public class PageCountMR {
     		String mapperKey = "N=";
             String line = value.toString();
             String []lines = line.split(System.getProperty("line.separator"));
-            context.write(new Text(mapperKey), new IntWritable(lines.length));
+            if(lines[lines.length - 1].trim().equals("")){
+            	context.write(new Text(mapperKey), new IntWritable(lines.length - 1));
+            }else{
+            	context.write(new Text(mapperKey), new IntWritable(lines.length));
+            }
         }
     } 
 
@@ -31,11 +37,12 @@ public class PageCountMR {
             for (IntWritable val : values) {
                 sum += val.get();
             }
+            pageCount = sum;
             context.write(key, new IntWritable(sum));
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    public void call(String[] args) throws Exception {
         Configuration conf = new Configuration();
         
         Job job = new Job(conf, "pagecount");
@@ -55,11 +62,22 @@ public class PageCountMR {
 		FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
 		FileSystem dfs = FileSystem.get(outPath.toUri(), conf);
+		
 		if (dfs.exists(outPath)) {
 			dfs.delete(outPath, true);
 		}
-        
+		
         job.waitForCompletion(true);
+        
+        if (dfs.exists(new Path("result/PageRank.n.out"))) {
+			dfs.delete(new Path("result/PageRank.n.out"), true);
+		}
+        
+        dfs.rename(new Path(outPath+"/part-r-00000"), new Path("result/PageRank.n.out"));
+		
+        PageRankMR o = new PageRankMR();
+        String arg[] = {"result/PageRank.inlink.out", "result1"}; 
+        o.call(arg, pageCount);
     }
 
 }
