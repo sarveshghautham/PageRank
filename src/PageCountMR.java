@@ -77,7 +77,9 @@ public class PageCountMR {
 		
         PageRankMR o = new PageRankMR();
         String arg[] = {"result/PageRank.inlink.out", "result1"}; 
-        o.call(arg, pageCount);
+        for(int iter = 1; iter < 9; iter++){
+        	o.call(arg, pageCount, iter);
+        }
     }
 
 }
