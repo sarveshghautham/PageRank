@@ -1,4 +1,6 @@
+package PageRank;
 import java.io.IOException;
+import org.jdom.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.regex.Matcher;
@@ -8,17 +10,14 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.JobConf;
-import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Reducer.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.MultipleOutputs;
-
 import java.io.Reader;
 import java.io.StringReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.mapreduce.Mapper;
@@ -90,7 +89,8 @@ class parserXmlMap extends Mapper<LongWritable, Text, Text, Text> {
 
 class parserXmlRed extends Reducer<Text, Text, Text, Text> {
 
-    public void reduce(Text key, Iterable<Text> values, Context context) 
+    @Override
+	public void reduce(Text key, Iterable<Text> values, Context context) 
         throws IOException, InterruptedException {
     	HashSet<String> hs = new HashSet<String>();
         String output="";
@@ -110,9 +110,9 @@ class parserXmlRed extends Reducer<Text, Text, Text, Text> {
     }
 }
 
-public class ParseXMLMR {
+public class PageRank {
 
-	public static void main(String[] args) throws IOException {
+	public static void main(String[] args) throws IOException, URISyntaxException {
 	
 		Configuration conf = new Configuration();
 	
@@ -120,16 +120,19 @@ public class ParseXMLMR {
 		conf.set("xmlinput.end", "</page>");
 	
 		Job job = new Job(conf, "xmlParsing");
-		job.setJarByClass(ParseXMLMR.class);
+		job.setJarByClass(PageRank.class);
 		job.setMapperClass(parserXmlMap.class);
 		job.setReducerClass(parserXmlRed.class);
 		job.setNumReduceTasks(1);
 		job.setInputFormatClass(XmlInputFormat.class);
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
-		Path outPath = new Path(args[1]);
+		Path outPath = new Path(new URI("s3://spring-2014-ds/data/enwiki-latest-pages-articles.xml"));
+		FileInputFormat.addInputPath(job, new Path("s3n://" + args[0] + "/data"));
+        FileOutputFormat.setOutputPath(job, new Path("s3n://" + args[0] + "/result"));
+		/*Path outPath = new Path(args[1]);
 		FileInputFormat.addInputPath(job, new Path(args[0]));
-        FileOutputFormat.setOutputPath(job, new Path(args[1]));
+        FileOutputFormat.setOutputPath(job, new Path(args[1]));*/
 		FileSystem dfs = FileSystem.get(outPath.toUri(), conf);
 		
 		if (dfs.exists(outPath)) {
@@ -139,27 +142,27 @@ public class ParseXMLMR {
 		try {
 			job.waitForCompletion(true);
 			
-			if (dfs.exists(new Path("result/PageRank.inlink.out"))) {
-				dfs.delete(new Path("result/PageRank.inlink.out"), true);
-				dfs.delete(new Path("result/_SUCCESS"), true);
+			if (dfs.exists(new Path(outPath+"/PageRank.outlink.out"))) {
+				dfs.delete(new Path(outPath+"/PageRank.outlink.out"), true);
+				dfs.delete(new Path(outPath+"/_SUCCESS"), true);
 			}
 			
-			dfs.rename(new Path(outPath+"/part-r-00000"), new Path(outPath+"/PageRank.inlink.out"));
-			
+			dfs.rename(new Path(outPath+"/part-r-00000"), new Path(outPath+"/PageRank.outlink.out"));
+			dfs.close();
 			PageCountMR o = new PageCountMR();
-			String arg[] = {"result", "result1"};
+			String arg[] = {outPath+"", outPath+"1"};
 			try {
-				o.call(arg);
+				o.call(arg, args[0]);
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		} 
 		catch (InterruptedException ex) {
-			Logger.getLogger(ParseXMLMR.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(PageRank.class.getName()).log(Level.SEVERE, null, ex);
 		} 
 		catch (ClassNotFoundException ex) {
-			Logger.getLogger(ParseXMLMR.class.getName()).log(Level.SEVERE, null, ex);
+			Logger.getLogger(PageRank.class.getName()).log(Level.SEVERE, null, ex);
 		}
 
 	}

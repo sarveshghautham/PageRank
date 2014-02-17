@@ -1,4 +1,6 @@
+package PageRank;
 import java.io.IOException;
+import org.jdom.*;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -15,7 +17,7 @@ import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 /**
 * Reads records that are delimited by a specifc begin/end tag.
 */
-public class XmlInputFormat extends  TextInputFormat {
+public class XmlInputFormat extends TextInputFormat {
 
   public static final String START_TAG_KEY = "xmlinput.start";
   public static final String END_TAG_KEY = "xmlinput.end";
